@@ -13,8 +13,87 @@
 #include "Logging.h"
 #include <regex>
 #include "psf_tracelogging.h"
+#include "pch.h"
+#include "unordered_set"
+
+using namespace winrt::Windows::Management::Deployment;
+using namespace winrt::Windows::ApplicationModel;
+using namespace winrt::Windows::Foundation::Collections;
 
 DWORD g_RegIntceptInstance = 0;
+std::unordered_set<std::string> redirected_paths;
+
+void CreateRegistryRedirectEntries()
+{
+	Log("RegLegacyFixups Create redirected registry values\n");
+    g_regRedirectRemediationInitialized = true;
+
+    Package pkg = Package::Current();
+    Log("Got current package %s\n", winrt::to_string(pkg.DisplayName()).c_str());
+    IVectorView<Package> dependencies = pkg.Dependencies();
+
+    for (const auto& entry : g_regRemediationSpecs)
+    {
+        for (const auto& record : entry.remediationRecords)
+        {
+            if (record.remeditaionType == Reg_Remediation_Type_Redirect)
+            {
+                const auto& redirected_entry = record.redirectedEntry;
+
+				Package depedency = nullptr;
+
+				Log("Filtering required dependency\n");
+				for (auto&& dep : dependencies) {
+					std::wstring_view name = dep.Id().Name();
+					Log("Checking package dependency %.*LS\n", name.length(), name.data());
+
+					if (name.find(redirected_entry.dependency) != std::wstring::npos) {
+						Log("Found required dependency\n");
+						depedency = dep;
+						break;
+					}
+				}
+				if (depedency == nullptr) 
+				{
+					Log("No package with name %LS found\n", redirected_entry.dependency.c_str());
+					continue;
+				}
+
+				std::wstring dependency_path(depedency.EffectivePath());
+				Log("Path of dependency %LS\n", dependency_path.c_str());
+
+                for (const auto& reg_entry : redirected_entry.data)
+                {
+                    HKEY res;
+
+                    LSTATUS st = ::RegCreateKeyExW(HKEY_CURRENT_USER, reg_entry.path.c_str(), 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &res, NULL);
+                    if (st != ERROR_SUCCESS)
+                    {
+                        Log("Create key %LS failed\n", reg_entry.path.c_str());
+                        return;
+                    }
+
+                    redirected_paths.insert(narrow(reg_entry.path));
+
+                    for (const auto& it : reg_entry.values)
+                    {
+                        std::wregex dependency_replacer(L"%dependency_root_path%");
+                        std::wstring value_data = std::regex_replace(it.second, dependency_replacer, dependency_path);
+
+                        st = ::RegSetValueExW(res, it.first.c_str(), 0, REG_SZ, (LPBYTE)value_data.c_str(),
+                            (DWORD)(value_data.size() + 1 /* for null termination char */) * sizeof(wchar_t));
+
+                        if (st != ERROR_SUCCESS)
+                        {
+                            Log("set value %s failed\n", it.first.c_str());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 std::string ReplaceRegistrySyntax(std::string regPath)
 {
@@ -411,13 +490,25 @@ LSTATUS __stdcall RegOpenKeyExFixup(
     LARGE_INTEGER TickStart, TickEnd;
     QueryPerformanceCounter(&TickStart);
     DWORD RegLocalInstance = ++g_RegIntceptInstance;
-
+    if (!g_regRedirectRemediationInitialized) CreateRegistryRedirectEntries();
     auto entry = LogFunctionEntry();
 
     Log("[%d] RegOpenKeyEx:\n", RegLocalInstance);
-
-
     std::string keypath = InterpretKeyPath(key) + "\\" + InterpretStringA(subKey);
+
+    {
+        std::string normalizedKeypath = ReplaceRegistrySyntax(keypath);
+        size_t subkeyOffset = normalizedKeypath.find_first_of('\\');
+        if (subkeyOffset != std::wstring_view::npos)
+        {
+			std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
+			if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+			{
+				return RegOpenKeyExImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey);
+			}
+        }
+    }
+
     REGSAM samModified = RegFixupSam(keypath, samDesired, RegLocalInstance);
 
     auto result = RegOpenKeyExImpl(key, subKey, options, samModified,  resultKey);
@@ -472,6 +563,7 @@ LSTATUS __stdcall RegOpenKeyTransactedFixup(
     LARGE_INTEGER TickStart, TickEnd;
     QueryPerformanceCounter(&TickStart);
     DWORD RegLocalInstance = ++g_RegIntceptInstance;
+    if (!g_regRedirectRemediationInitialized) CreateRegistryRedirectEntries();
     auto entry = LogFunctionEntry();
 
 #if _DEBUG
@@ -479,6 +571,20 @@ LSTATUS __stdcall RegOpenKeyTransactedFixup(
 #endif
 
     std::string keypath = InterpretKeyPath(key) + "\\" + InterpretStringA(subKey);
+
+	{
+        std::string normalizedKeypath = ReplaceRegistrySyntax(keypath);
+        size_t subkeyOffset = normalizedKeypath.find_first_of('\\');
+        if (subkeyOffset != std::wstring_view::npos)
+        {
+			std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
+			if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+			{
+				return RegOpenKeyTransactedImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey, hTransaction, pExtendedParameter);
+			}
+        }
+    }
+
     REGSAM samModified = RegFixupSam(keypath, samDesired, RegLocalInstance);
 
     auto result = RegOpenKeyTransactedImpl(key, subKey, options, samModified, resultKey, hTransaction, pExtendedParameter);

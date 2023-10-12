@@ -22,6 +22,7 @@ using namespace std::literals;
 #include "psf_tracelogging.h"
 
 std::vector<Reg_Remediation_Spec>  g_regRemediationSpecs;
+bool  g_regRedirectRemediationInitialized = true;
 
 #if _DEBUG 
 void Log(const char* fmt, ...)
@@ -225,7 +226,7 @@ void InitializeConfiguration()
                         else if (type.compare(L"FakeDelete") == 0)
                         {
                             Log("RegLegacyFixups:      is FakeDelete\n");
-                            recordItem.remeditaionType = Reg_Remediation_type_FakeDelete;
+                            recordItem.remeditaionType = Reg_Remediation_Type_FakeDelete;
 
                             auto hiveType = regItemObject.try_get("hive")->as_string().wstring();
                             traceDataStream << " hive: " << hiveType << " ;";
@@ -254,6 +255,38 @@ void InitializeConfiguration()
                             }
                             Log("RegLegacyFixups:      have patterns\n");
 
+                            specItem.remediationRecords.push_back(recordItem);
+                        }
+                        else if (type.compare(L"Redirect") == 0)
+                        {
+                            g_regRedirectRemediationInitialized = false;
+                            recordItem.remeditaionType = Reg_Remediation_Type_Redirect;
+
+                            std::wstring_view dependency = regItemObject.get("dependency").as_string().wstring();
+                            const psf::json_array& data = regItemObject.get("data").as_array();
+
+                            recordItem.redirectedEntry.dependency = dependency;
+
+                            for (auto& entry : data)
+                            {
+                                Redirect_Registry_Entry_Data entry_data;
+
+                                auto& obj = entry.as_object();
+
+                                std::wstring_view key = obj.get("key").as_string().wstring();
+                                entry_data.path = key;
+
+								for (const auto& it : obj.get("values").as_object())
+                                {
+                                    // RegSetValueExW expected null terminated strings. string_view cannot guarantee a null terminated string. Need to copy to a std::wstring
+                                    std::wstring value_name(it.first.begin(), it.first.end());
+                                    std::wstring value_data(it.second.as_string().wstring());
+
+                                    entry_data.values.insert({ value_name, value_data });
+                                }
+
+                                recordItem.redirectedEntry.data.push_back(entry_data);
+                            }
                             specItem.remediationRecords.push_back(recordItem);
                         }
                         else
