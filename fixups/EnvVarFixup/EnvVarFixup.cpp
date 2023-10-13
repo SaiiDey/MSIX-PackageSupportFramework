@@ -9,8 +9,13 @@
 #include "FunctionImplementations.h"
 #include "EnvVar_spec.h"
 #include "psf_tracelogging.h"
+#include "pch.h"
 
 extern std::vector<env_var_spec> g_envvar_envVarSpecs;
+
+using namespace winrt::Windows::Management::Deployment;
+using namespace winrt::Windows::ApplicationModel;
+using namespace winrt::Windows::Foundation::Collections;
 
 DWORD g_EnvVarInterceptInstance = 0;
 
@@ -162,6 +167,74 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                         // allow to fall through to system
                         //return result;
                         result = 0;
+                    }
+                    else if (!spec.dependency.empty())
+                    {
+                        Package pkg = Package::Current();
+                        Log("Got current package %s\n", winrt::to_string(pkg.DisplayName()).c_str());
+                        IVectorView<Package> dependencies = pkg.Dependencies();
+
+                        Package depedency = nullptr;
+
+                        Log("Filtering required dependency\n");
+                        for (auto&& dep : dependencies) {
+                            std::wstring_view name = dep.Id().Name();
+                            Log("Checking package dependency %.*LS\n", name.length(), name.data());
+
+                            if (name.find(spec.dependency) != std::wstring::npos) {
+                                Log("Found required dependency\n");
+                                depedency = dep;
+                                break;
+                            }
+                        }
+                        if (depedency == nullptr)
+                        {
+                            Log("No package with name %LS found\n", spec.dependency.c_str());
+                            continue;
+                        }
+
+                        std::wstring dependency_path(depedency.EffectivePath());
+                        Log("Path of dependency %LS\n", dependency_path.c_str());
+
+                        if constexpr (psf::is_ansi<CharT>)
+                        {
+							std::regex dependency_replacer("%dependency_root_path%");
+							std::string value_data = std::regex_replace(narrow(spec.variablevalue), dependency_replacer, narrow(dependency_path));
+                            if (lenBuf > value_data.size())
+                            {
+								ZeroMemory(lpValue, lenBuf);
+								value_data.copy(lpValue, lenBuf, 0);
+								//strcpy_s(lpValue, lenBuf, sval.c_str());
+								//LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
+								return (DWORD)value_data.size();
+                            }
+                            else
+                            {
+								result = ERROR_BUFFER_OVERFLOW;
+								SetLastError(ERROR_BUFFER_OVERFLOW);
+								return(result);
+                            }
+						}
+                        else
+                        {
+                            std::wregex dependency_replacer(L"%dependency_root_path%");
+                            std::wstring value_data = std::regex_replace(std::wstring(spec.variablevalue), dependency_replacer, dependency_path);
+
+							if (lenBuf > value_data.size())
+                            {
+								ZeroMemory(lpValue, lenBuf);
+								value_data.copy(lpValue, lenBuf, 0);
+								//strcpy_s(lpValue, lenBuf, sval.c_str());
+								//LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
+								return (DWORD)value_data.size();
+                            }
+                            else
+                            {
+								result = ERROR_BUFFER_OVERFLOW;
+								SetLastError(ERROR_BUFFER_OVERFLOW);
+								return(result);
+                            }
+                        }
                     }
 
                     // Sometimes HKLM\System reg items from the package are not visible to the app.  We think this is a bug, so

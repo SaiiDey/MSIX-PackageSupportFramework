@@ -181,6 +181,12 @@ void InitializeConfiguration()
                     {
                         g_envvar_envVarSpecs.back().useregistry = false;
                     }
+
+                    auto usedependency = specObject.try_get("usedependency");
+                    if (usedependency)
+                    {
+                        g_envvar_envVarSpecs.back().dependency = usedependency->as_string().wstring();
+                    }
                     count++;
                 };
                 Log("EnvVarFixup: %d config items read.", count);

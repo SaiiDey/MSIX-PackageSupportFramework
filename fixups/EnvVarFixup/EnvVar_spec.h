@@ -10,4 +10,5 @@ struct env_var_spec
     std::wregex variablename;
     std::wstring_view variablevalue;
     bool useregistry;
+    std::wstring dependency;
 };
