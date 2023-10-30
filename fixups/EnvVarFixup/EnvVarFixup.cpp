@@ -171,18 +171,23 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                     else if (!spec.dependency.empty())
                     {
                         Package pkg = Package::Current();
-                        Log("Got current package %s\n", winrt::to_string(pkg.DisplayName()).c_str());
                         IVectorView<Package> dependencies = pkg.Dependencies();
 
                         Package depedency = nullptr;
 
+#ifdef _DEBUG
                         Log("Filtering required dependency\n");
+#endif
                         for (auto&& dep : dependencies) {
                             std::wstring_view name = dep.Id().Name();
+#ifdef _DEBUG
                             Log("Checking package dependency %.*LS\n", name.length(), name.data());
+#endif
 
                             if (name.find(spec.dependency) != std::wstring::npos) {
+#ifdef _DEBUG
                                 Log("Found required dependency\n");
+#endif
                                 depedency = dep;
                                 break;
                             }
@@ -193,46 +198,54 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                             continue;
                         }
 
-                        std::wstring dependency_path(depedency.EffectivePath());
-                        Log("Path of dependency %LS\n", dependency_path.c_str());
-
                         if constexpr (psf::is_ansi<CharT>)
                         {
-							std::regex dependency_replacer("%dependency_root_path%");
-							std::string value_data = std::regex_replace(narrow(spec.variablevalue), dependency_replacer, narrow(dependency_path));
+							std::string dependency_path(narrow(depedency.EffectivePath()));
+							auto version = depedency.Id().Version();
+							std::string dependency_version = std::to_string(version.Major) + "." + std::to_string(version.Minor) + "." + std::to_string(version.Build) + "." + std::to_string(version.Revision);
+							Log("Dependency path: %S, version: %S\n", dependency_path.c_str(), dependency_version.c_str());
+
+							std::regex dependency_version_regex = std::regex("%dependency_version%");
+							std::regex dependency_path_regex = std::regex("%dependency_root_path%");
+
+							std::string value_data = std::regex_replace(narrow(spec.variablevalue), dependency_path_regex, dependency_path);
+							value_data = std::regex_replace(value_data, dependency_version_regex, dependency_version);
+
                             if (lenBuf > value_data.size())
                             {
 								ZeroMemory(lpValue, lenBuf);
-								value_data.copy(lpValue, lenBuf, 0);
-								//strcpy_s(lpValue, lenBuf, sval.c_str());
-								//LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
-								return (DWORD)value_data.size();
+								value_data.copy(lpValue, lenBuf);
+								return (DWORD) value_data.size();
                             }
                             else
                             {
-								result = ERROR_BUFFER_OVERFLOW;
 								SetLastError(ERROR_BUFFER_OVERFLOW);
-								return(result);
+								return value_data.size() + 1 /* To include NULL terminator */;
                             }
 						}
                         else
                         {
-                            std::wregex dependency_replacer(L"%dependency_root_path%");
-                            std::wstring value_data = std::regex_replace(std::wstring(spec.variablevalue), dependency_replacer, dependency_path);
+							std::wstring dependency_path(depedency.EffectivePath());
+							auto version = depedency.Id().Version();
+							std::wstring dependency_version = std::to_wstring(version.Major) + L"." + std::to_wstring(version.Minor) + L"." + std::to_wstring(version.Build) + L"." + std::to_wstring(version.Revision);
+							Log("Dependency path: %LS, version: %LS\n", dependency_path.c_str(), dependency_version.c_str());
+
+							std::wregex dependency_version_regex = std::wregex(L"%dependency_version%");
+                            std::wregex dependency_path_regex(L"%dependency_root_path%");
+
+                            std::wstring value_data = std::regex_replace(std::wstring(spec.variablevalue), dependency_path_regex, dependency_path);
+							value_data = std::regex_replace(value_data, dependency_version_regex, dependency_version);
 
 							if (lenBuf > value_data.size())
                             {
 								ZeroMemory(lpValue, lenBuf);
-								value_data.copy(lpValue, lenBuf, 0);
-								//strcpy_s(lpValue, lenBuf, sval.c_str());
-								//LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
-								return (DWORD)value_data.size();
+								value_data.copy(lpValue, lenBuf);
+								return (DWORD) value_data.size();
                             }
                             else
                             {
-								result = ERROR_BUFFER_OVERFLOW;
 								SetLastError(ERROR_BUFFER_OVERFLOW);
-								return(result);
+								return value_data.size() + 1 /* To include NULL terminator */;
                             }
                         }
                     }

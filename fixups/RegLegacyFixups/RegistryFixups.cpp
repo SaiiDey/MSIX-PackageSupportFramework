@@ -22,6 +22,8 @@ using namespace winrt::Windows::Foundation::Collections;
 
 DWORD g_RegIntceptInstance = 0;
 std::unordered_set<std::string> redirected_paths;
+std::wregex dependency_version_regex = std::wregex(L"%dependency_version%");
+std::wregex dependency_path_regex = std::wregex(L"%dependency_root_path%");
 
 void CreateRegistryRedirectEntries()
 {
@@ -29,7 +31,6 @@ void CreateRegistryRedirectEntries()
     g_regRedirectRemediationInitialized = true;
 
     Package pkg = Package::Current();
-    Log("Got current package %s\n", winrt::to_string(pkg.DisplayName()).c_str());
     IVectorView<Package> dependencies = pkg.Dependencies();
 
     for (const auto& entry : g_regRemediationSpecs)
@@ -42,13 +43,19 @@ void CreateRegistryRedirectEntries()
 
 				Package depedency = nullptr;
 
+#ifdef _DEBUG
 				Log("Filtering required dependency\n");
+#endif
 				for (auto&& dep : dependencies) {
 					std::wstring_view name = dep.Id().Name();
+#ifdef _DEBUG
 					Log("Checking package dependency %.*LS\n", name.length(), name.data());
+#endif
 
 					if (name.find(redirected_entry.dependency) != std::wstring::npos) {
+#ifdef _DEBUG
 						Log("Found required dependency\n");
+#endif
 						depedency = dep;
 						break;
 					}
@@ -60,32 +67,37 @@ void CreateRegistryRedirectEntries()
 				}
 
 				std::wstring dependency_path(depedency.EffectivePath());
-				Log("Path of dependency %LS\n", dependency_path.c_str());
+                auto version = depedency.Id().Version();
+				std::wstring dependency_version = std::to_wstring(version.Major) + L"." + std::to_wstring(version.Minor) + L"." + std::to_wstring(version.Build) + L"." + std::to_wstring(version.Revision);
+				Log("Dependency path: %LS, version: %LS\n", dependency_path.c_str(), dependency_version.c_str());
 
                 for (const auto& reg_entry : redirected_entry.data)
                 {
                     HKEY res;
+					std::wstring reg_path = std::regex_replace(reg_entry.path, dependency_version_regex, dependency_version);
 
-                    LSTATUS st = ::RegCreateKeyExW(HKEY_CURRENT_USER, reg_entry.path.c_str(), 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &res, NULL);
+                    LSTATUS st = ::RegCreateKeyExW(HKEY_CURRENT_USER, reg_path.c_str(), 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &res, NULL);
                     if (st != ERROR_SUCCESS)
                     {
                         Log("Create key %LS failed\n", reg_entry.path.c_str());
                         return;
                     }
 
-                    redirected_paths.insert(narrow(reg_entry.path));
+                    redirected_paths.insert(narrow(reg_path));
 
                     for (const auto& it : reg_entry.values)
                     {
-                        std::wregex dependency_replacer(L"%dependency_root_path%");
-                        std::wstring value_data = std::regex_replace(it.second, dependency_replacer, dependency_path);
+                        std::wstring value_data = std::regex_replace(it.second, dependency_path_regex, dependency_path);
+                        value_data = std::regex_replace(value_data, dependency_version_regex, dependency_version);
 
                         st = ::RegSetValueExW(res, it.first.c_str(), 0, REG_SZ, (LPBYTE)value_data.c_str(),
                             (DWORD)(value_data.size() + 1 /* for null termination char */) * sizeof(wchar_t));
 
                         if (st != ERROR_SUCCESS)
                         {
+#ifdef _DEBUG
                             Log("set value %s failed\n", it.first.c_str());
+#endif
                         }
                     }
                 }

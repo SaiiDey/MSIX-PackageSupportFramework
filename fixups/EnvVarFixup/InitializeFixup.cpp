@@ -182,10 +182,10 @@ void InitializeConfiguration()
                         g_envvar_envVarSpecs.back().useregistry = false;
                     }
 
-                    auto usedependency = specObject.try_get("usedependency");
-                    if (usedependency)
+                    auto dependency = specObject.try_get("dependency");
+                    if (dependency)
                     {
-                        g_envvar_envVarSpecs.back().dependency = usedependency->as_string().wstring();
+                        g_envvar_envVarSpecs.back().dependency = dependency->as_string().wstring();
                     }
                     count++;
                 };
