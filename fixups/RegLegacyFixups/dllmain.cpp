@@ -21,6 +21,7 @@ bool m_shouldLog = true;
 
 void InitializeFixups();
 void InitializeConfiguration();
+void CleanupFixups();
 void Log(const char* fmt, ...);
 
 extern "C" {
@@ -53,6 +54,8 @@ extern "C" {
         case DLL_THREAD_DETACH:
         case DLL_PROCESS_DETACH:
             TraceLoggingUnregister(g_Log_ETW_ComponentProvider);
+
+            CleanupFixups();
             break;
         }
         return TRUE;

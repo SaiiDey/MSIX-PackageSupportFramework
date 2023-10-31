@@ -21,9 +21,8 @@ using namespace winrt::Windows::ApplicationModel;
 using namespace winrt::Windows::Foundation::Collections;
 
 DWORD g_RegIntceptInstance = 0;
-std::unordered_set<std::string> redirected_paths;
-std::wregex dependency_version_regex = std::wregex(L"%dependency_version%");
-std::wregex dependency_path_regex = std::wregex(L"%dependency_root_path%");
+std::unordered_set<std::string> g_redirected_paths;
+std::vector<std::wstring> g_created_keys_ordered;
 
 void CreateRegistryRedirectEntries()
 {
@@ -32,6 +31,9 @@ void CreateRegistryRedirectEntries()
 
     Package pkg = Package::Current();
     IVectorView<Package> dependencies = pkg.Dependencies();
+
+    std::wregex dependency_version_regex = std::wregex(L"%dependency_version%");
+    std::wregex dependency_path_regex = std::wregex(L"%dependency_root_path%");
 
     for (const auto& entry : g_regRemediationSpecs)
     {
@@ -83,7 +85,8 @@ void CreateRegistryRedirectEntries()
                         return;
                     }
 
-                    redirected_paths.insert(narrow(reg_path));
+                    g_redirected_paths.insert(narrow(reg_path));
+                    g_created_keys_ordered.push_back(reg_path);
 
                     for (const auto& it : reg_entry.values)
                     {
@@ -106,6 +109,23 @@ void CreateRegistryRedirectEntries()
     }
 }
 
+void CleanupFixups()
+{
+    Log("RegLegacyFixups CleanupFixups()\n");
+
+    // Deleted the created keys in reverse order
+    std::vector<std::wstring>::reverse_iterator redirected_path = g_created_keys_ordered.rbegin();
+
+    while (redirected_path != g_created_keys_ordered.rend())
+    {
+        LSTATUS st = ::RegDeleteTreeW(HKEY_CURRENT_USER, redirected_path->c_str());
+        if (st != ERROR_SUCCESS)
+        {
+            Log("Delete key %LS failed\n", redirected_path->c_str());
+        }
+        redirected_path++;
+    }
+}
 
 std::string ReplaceRegistrySyntax(std::string regPath)
 {
@@ -514,7 +534,7 @@ LSTATUS __stdcall RegOpenKeyExFixup(
         if (subkeyOffset != std::wstring_view::npos)
         {
             std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
-            if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+            if (g_redirected_paths.find(requestedSubkey) != g_redirected_paths.end())
             {
                 return RegOpenKeyExImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey);
             }
@@ -590,7 +610,7 @@ LSTATUS __stdcall RegOpenKeyTransactedFixup(
         if (subkeyOffset != std::wstring_view::npos)
         {
             std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
-            if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+            if (g_redirected_paths.find(requestedSubkey) != g_redirected_paths.end())
             {
                 return RegOpenKeyTransactedImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey, hTransaction, pExtendedParameter);
             }
