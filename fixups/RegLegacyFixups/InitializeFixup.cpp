@@ -276,7 +276,7 @@ void InitializeConfiguration()
                                 std::wstring_view key = obj.get("key").as_string().wstring();
                                 entry_data.path = key;
 
-								for (const auto& it : obj.get("values").as_object())
+                                for (const auto& it : obj.get("values").as_object())
                                 {
                                     // RegSetValueExW expected null terminated strings. string_view cannot guarantee a null terminated string. Need to copy to a std::wstring
                                     std::wstring value_name(it.first.begin(), it.first.end());

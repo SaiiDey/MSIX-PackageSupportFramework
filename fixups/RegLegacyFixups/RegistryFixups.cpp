@@ -27,7 +27,7 @@ std::wregex dependency_path_regex = std::wregex(L"%dependency_root_path%");
 
 void CreateRegistryRedirectEntries()
 {
-	Log("RegLegacyFixups Create redirected registry values\n");
+    Log("RegLegacyFixups Create redirected registry values\n");
     g_regRedirectRemediationInitialized = true;
 
     Package pkg = Package::Current();
@@ -41,40 +41,40 @@ void CreateRegistryRedirectEntries()
             {
                 const auto& redirected_entry = record.redirectedEntry;
 
-				Package depedency = nullptr;
+                Package depedency = nullptr;
 
 #ifdef _DEBUG
-				Log("Filtering required dependency\n");
+                Log("Filtering required dependency\n");
 #endif
-				for (auto&& dep : dependencies) {
-					std::wstring_view name = dep.Id().Name();
+                for (auto&& dep : dependencies) {
+                    std::wstring_view name = dep.Id().Name();
 #ifdef _DEBUG
-					Log("Checking package dependency %.*LS\n", name.length(), name.data());
+                    Log("Checking package dependency %.*LS\n", name.length(), name.data());
 #endif
 
-					if (name.find(redirected_entry.dependency) != std::wstring::npos) {
+                    if (name.find(redirected_entry.dependency) != std::wstring::npos) {
 #ifdef _DEBUG
-						Log("Found required dependency\n");
+                        Log("Found required dependency\n");
 #endif
-						depedency = dep;
-						break;
-					}
-				}
-				if (depedency == nullptr) 
-				{
-					Log("No package with name %LS found\n", redirected_entry.dependency.c_str());
-					continue;
-				}
+                        depedency = dep;
+                        break;
+                    }
+                }
+                if (depedency == nullptr) 
+                {
+                    Log("No package with name %LS found\n", redirected_entry.dependency.c_str());
+                    continue;
+                }
 
-				std::wstring dependency_path(depedency.EffectivePath());
+                std::wstring dependency_path(depedency.EffectivePath());
                 auto version = depedency.Id().Version();
-				std::wstring dependency_version = std::to_wstring(version.Major) + L"." + std::to_wstring(version.Minor) + L"." + std::to_wstring(version.Build) + L"." + std::to_wstring(version.Revision);
-				Log("Dependency path: %LS, version: %LS\n", dependency_path.c_str(), dependency_version.c_str());
+                std::wstring dependency_version = std::to_wstring(version.Major) + L"." + std::to_wstring(version.Minor) + L"." + std::to_wstring(version.Build) + L"." + std::to_wstring(version.Revision);
+                Log("Dependency path: %LS, version: %LS\n", dependency_path.c_str(), dependency_version.c_str());
 
                 for (const auto& reg_entry : redirected_entry.data)
                 {
                     HKEY res;
-					std::wstring reg_path = std::regex_replace(reg_entry.path, dependency_version_regex, dependency_version);
+                    std::wstring reg_path = std::regex_replace(reg_entry.path, dependency_version_regex, dependency_version);
 
                     LSTATUS st = ::RegCreateKeyExW(HKEY_CURRENT_USER, reg_path.c_str(), 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &res, NULL);
                     if (st != ERROR_SUCCESS)
@@ -513,11 +513,11 @@ LSTATUS __stdcall RegOpenKeyExFixup(
         size_t subkeyOffset = normalizedKeypath.find_first_of('\\');
         if (subkeyOffset != std::wstring_view::npos)
         {
-			std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
-			if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
-			{
-				return RegOpenKeyExImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey);
-			}
+            std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
+            if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+            {
+                return RegOpenKeyExImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey);
+            }
         }
     }
 
@@ -584,16 +584,16 @@ LSTATUS __stdcall RegOpenKeyTransactedFixup(
 
     std::string keypath = InterpretKeyPath(key) + "\\" + InterpretStringA(subKey);
 
-	{
+    {
         std::string normalizedKeypath = ReplaceRegistrySyntax(keypath);
         size_t subkeyOffset = normalizedKeypath.find_first_of('\\');
         if (subkeyOffset != std::wstring_view::npos)
         {
-			std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
-			if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
-			{
-				return RegOpenKeyTransactedImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey, hTransaction, pExtendedParameter);
-			}
+            std::string requestedSubkey = normalizedKeypath.substr(subkeyOffset + 1);
+            if (redirected_paths.find(requestedSubkey) != redirected_paths.end())
+            {
+                return RegOpenKeyTransactedImpl(HKEY_CURRENT_USER, requestedSubkey.c_str(), options, samDesired, resultKey, hTransaction, pExtendedParameter);
+            }
         }
     }
 
