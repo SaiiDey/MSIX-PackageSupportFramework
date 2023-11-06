@@ -220,7 +220,7 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                             else
                             {
                                 SetLastError(ERROR_BUFFER_OVERFLOW);
-                                return value_data.size() + 1 /* To include NULL terminator */;
+                                return (DWORD) value_data.size() + 1 /* To include NULL terminator */;
                             }
                         }
                         else
@@ -245,7 +245,7 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                             else
                             {
                                 SetLastError(ERROR_BUFFER_OVERFLOW);
-                                return value_data.size() + 1 /* To include NULL terminator */;
+                                return (DWORD) value_data.size() + 1 /* To include NULL terminator */;
                             }
                         }
                     }

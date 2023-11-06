@@ -5,6 +5,7 @@
 //-------------------------------------------------------------------------------------------------------
 #pragma once
 #include <unordered_map>
+#include <unordered_set>
 #include <string_view>
 #include <vector>
 
@@ -16,7 +17,6 @@ enum  Reg_Remediation_Types
     Reg_Remediation_Type_Unknown = 0,
     Reg_Remediation_Type_ModifyKeyAccess,
     Reg_Remediation_Type_FakeDelete,
-    Reg_Remediation_Type_Redirect
 };
 
 enum Modify_Key_Access_Types
@@ -49,25 +49,11 @@ struct Fake_Delete_Key
     std::vector<std::wstring> patterns;
 };
 
-
-struct Redirect_Registry_Entry_Data 
-{
-    std::wstring path;
-    std::unordered_map<std::wstring, std::wstring> values;
-};
-
-struct Redirect_Registry_Entry
-{
-    std::wstring dependency;
-    std::vector<Redirect_Registry_Entry_Data> data;
-};
-
 struct Reg_Remediation_Record
 {
     Reg_Remediation_Types remeditaionType;
-	Modify_Key_Access modifyKeyAccess;
-	Fake_Delete_Key fakeDeleteKey;
-	Redirect_Registry_Entry redirectedEntry;
+    Modify_Key_Access modifyKeyAccess;
+    Fake_Delete_Key fakeDeleteKey;
 };
 
 struct Reg_Remediation_Spec
@@ -76,4 +62,5 @@ struct Reg_Remediation_Spec
 };
 
 extern std::vector<Reg_Remediation_Spec>  g_regRemediationSpecs;
-extern bool  g_regRedirectRemediationInitialized;
+extern std::unordered_set<std::string> g_regRedirectedHivePaths;
+extern std::vector<std::wstring> g_regCreatedKeysOrdered;
