@@ -59,116 +59,160 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                 if (std::regex_match(eName, spec.variablename))
                 {
                     size_t valuelen = spec.variablevalue.length();
-                    if (spec.useregistry == true)
+                    if (spec.remediationType == Env_Remediation_Type_Registry)
                     {
-                        Log("[%d] GetEnvironmentVariableFixup: Registry supplied case.", GetEnvVarInstance);
-                        // Check app registry for an answer instead of the Json. Note: this allows value to be modified possibly also.
-                        HKEY hKeyCU;
-                        if constexpr (psf::is_ansi<CharT>)
+                        if (spec.useregistry == true)
                         {
-                            if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment",
-                                0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyCU) == ERROR_SUCCESS)
+                            Log("[%d] GetEnvironmentVariableFixup: Registry supplied case.", GetEnvVarInstance);
+                            // Check app registry for an answer instead of the Json. Note: this allows value to be modified possibly also.
+                            HKEY hKeyCU;
+                            if constexpr (psf::is_ansi<CharT>)
                             {
-                                Log("[%d] GetEnvironmentVariableFixup:(A) HKCU key found.", GetEnvVarInstance);
-                                DWORD type = RRF_RT_REG_SZ;
-                                DWORD dLen = (DWORD)lenBuf;
-                                auto ret = RegGetValueA(HKEY_CURRENT_USER, "Environment", lpName,
-                                    RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
-                                if (ret == ERROR_SUCCESS)
+                                if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment",
+                                    0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyCU) == ERROR_SUCCESS)
                                 {
-                                    Log("[%d] GetEnvironmentVariableFixup:(A) HKCU value found %s", GetEnvVarInstance, lpValue);
-                                    result = dLen;
+                                    Log("[%d] GetEnvironmentVariableFixup:(A) HKCU key found.", GetEnvVarInstance);
+                                    DWORD type = RRF_RT_REG_SZ;
+                                    DWORD dLen = (DWORD)lenBuf;
+                                    auto ret = RegGetValueA(HKEY_CURRENT_USER, "Environment", lpName,
+                                        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
+                                    if (ret == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(A) HKCU value found %s", GetEnvVarInstance, lpValue);
+                                        result = dLen;
+                                        RegCloseKey(hKeyCU);
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(A) HKCU value Failed 0x%x.", GetEnvVarInstance, ret);
+                                    }
                                     RegCloseKey(hKeyCU);
-                                    return result;
                                 }
-                                else
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(A) HKCU value Failed 0x%x.", GetEnvVarInstance, ret);
-                                }
-                                RegCloseKey(hKeyCU);
                             }
+                            else
+                            {
+                                if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment",
+                                    0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyCU) == ERROR_SUCCESS)
+                                {
+                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKCU key found.", GetEnvVarInstance);
+                                    LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) Looking for ", lpName);
+                                    DWORD type = RRF_RT_REG_SZ;
+                                    DWORD dLen = lenBuf;
+                                    auto ret = RegGetValueW(HKEY_CURRENT_USER, L"Environment", lpName,
+                                        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
+                                    if (ret == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value found %ls", GetEnvVarInstance, lpValue);
+                                        result = dLen;
+                                        RegCloseKey(hKeyCU);
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value Failed 0x%x.", GetEnvVarInstance, ret);
+                                    }
+                                    RegCloseKey(hKeyCU);
+                                }
+                            }
+                            result = 0;
+
+                            HKEY hKeyLM;
+                            if constexpr (psf::is_ansi<CharT>)
+                            {
+                                if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+                                    0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyLM) == ERROR_SUCCESS)
+                                {
+                                    Log("[%d] GetEnvironmentVariableFixup:(A) HKLM key found.", GetEnvVarInstance);
+
+                                    LONG dLen0 = (LONG)lenBuf;
+                                    auto ret00 = RegQueryValueA(hKeyLM, lpName, lpValue, &dLen0);
+                                    if (ret00 == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(A) HKLM value queried! %s", GetEnvVarInstance, lpValue);
+                                        result = (DWORD)dLen0;
+                                        RegCloseKey(hKeyLM);
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value Failed 0x%x.", GetEnvVarInstance, ret00);
+                                    }
+
+                                    RegCloseKey(hKeyLM);
+                                }
+                            }
+                            else
+                            {
+                                if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+                                    0, KEY_ENUMERATE_SUB_KEYS | STANDARD_RIGHTS_READ | KEY_QUERY_VALUE, &hKeyLM) == ERROR_SUCCESS)
+                                {
+                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKLM key found.", GetEnvVarInstance);
+                                    DWORD type = RRF_RT_REG_SZ;
+                                    DWORD dLen = lenBuf;
+                                    auto ret = RegGetValueW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", lpName,
+                                        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
+                                    if (ret == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(W) HKLM value found %ls", GetEnvVarInstance, lpValue);
+                                        result = dLen;
+                                        RegCloseKey(hKeyLM);
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] GetEnvironmentVariableFixup:(W) HKLM value Failed 0x%x.", GetEnvVarInstance, ret);
+                                    }
+                                    RegCloseKey(hKeyLM);
+                                }
+                            }
+                            // allow to fall through to system
+                            //return result;
+                            result = 0;
+                        }
+
+                        // Sometimes HKLM\System reg items from the package are not visible to the app.  We think this is a bug, so
+                        // allow a check to see if there is a value field in the JSON and use that.
+                        // Of course, we should always look at the json if useregistry was set to false anyway.
+                        Log("[%d] GetEnvironmentVariableFixup: Json supplied case.", GetEnvVarInstance);
+
+                        if (valuelen < lenBuf)
+                        {
+                            Log("[%d] GetEnvironmentVariableFixup: Match to be returned.", GetEnvVarInstance);
+                            // copy into lpValue, but might need form conversion
+                            if constexpr (psf::is_ansi<CharT>)
+                            {
+                                std::string sval = narrow(spec.variablevalue);
+                                LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value is ", sval.c_str());
+                                ZeroMemory(lpValue, lenBuf);
+                                sval.copy(lpValue, lenBuf, 0);
+                                //strcpy_s(lpValue, lenBuf, sval.c_str());
+                                LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
+                                result = (DWORD)sval.length();
+                            }
+                            else
+                            {
+                                LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) HKCU value is ", spec.variablevalue.data());
+                                ZeroMemory(lpValue, lenBuf);
+                                spec.variablevalue.copy(lpValue, lenBuf, 0);
+                                LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) HKCU value copied is ", lpValue);
+                                result = (DWORD)valuelen;
+                            }
+                            Log("GetEnvironmentVariableFixup: Value saved.");
+                            SetLastError(ERROR_SUCCESS);
+                            return(result);
                         }
                         else
                         {
-                            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment",
-                                0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyCU) == ERROR_SUCCESS)
-                            {
-                                Log("[%d] GetEnvironmentVariableFixup:(W) HKCU key found.", GetEnvVarInstance);
-                                LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) Looking for ", lpName);
-                                DWORD type = RRF_RT_REG_SZ;
-                                DWORD dLen = lenBuf;
-                                auto ret = RegGetValueW(HKEY_CURRENT_USER, L"Environment", lpName,
-                                    RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
-                                if (ret == ERROR_SUCCESS)
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value found %ls", GetEnvVarInstance, lpValue);
-                                    result = dLen;
-                                    RegCloseKey(hKeyCU);
-                                    return result;
-                                }
-                                else
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value Failed 0x%x.", GetEnvVarInstance, ret);
-                                }
-                                RegCloseKey(hKeyCU);
-                            }
+                            Log("GetEnvironmentVariableFixup: Match returns bufferoverflow.");
+                            // return buffer overflow
+                            result = ERROR_BUFFER_OVERFLOW;
+                            SetLastError(ERROR_BUFFER_OVERFLOW);
+                            return(result);
                         }
-                        result = 0;
 
-                        HKEY hKeyLM;
-                        if constexpr (psf::is_ansi<CharT>)
-                        {
-                            if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
-                                0, KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_QUERY_VALUE, &hKeyLM) == ERROR_SUCCESS)
-                            {
-                                Log("[%d] GetEnvironmentVariableFixup:(A) HKLM key found.", GetEnvVarInstance);
-
-                                LONG dLen0 = (LONG)lenBuf;
-                                auto ret00 = RegQueryValueA(hKeyLM, lpName, lpValue, &dLen0);
-                                if (ret00 == ERROR_SUCCESS)
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(A) HKLM value queried! %s", GetEnvVarInstance, lpValue);
-                                    result = (DWORD)dLen0;
-                                    RegCloseKey(hKeyLM);
-                                    return result;
-                                }
-                                else
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKCU value Failed 0x%x.", GetEnvVarInstance, ret00);
-                                }
-
-                                RegCloseKey(hKeyLM);
-                            }
-                        }
-                        else
-                        {
-                            if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
-                                0, KEY_ENUMERATE_SUB_KEYS | STANDARD_RIGHTS_READ | KEY_QUERY_VALUE, &hKeyLM) == ERROR_SUCCESS)
-                            {
-                                Log("[%d] GetEnvironmentVariableFixup:(W) HKLM key found.", GetEnvVarInstance);
-                                DWORD type = RRF_RT_REG_SZ;
-                                DWORD dLen = lenBuf;
-                                auto ret = RegGetValueW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", lpName,
-                                    RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, &type, lpValue, &dLen);
-                                if (ret == ERROR_SUCCESS)
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKLM value found %ls", GetEnvVarInstance, lpValue);
-                                    result = dLen;
-                                    RegCloseKey(hKeyLM);
-                                    return result;
-                                }
-                                else
-                                {
-                                    Log("[%d] GetEnvironmentVariableFixup:(W) HKLM value Failed 0x%x.", GetEnvVarInstance, ret);
-                                }
-                                RegCloseKey(hKeyLM);
-                            }
-                        }
-                        // allow to fall through to system
-                        //return result;
-                        result = 0;
                     }
-                    else if (!spec.dependency.empty())
+                    else if (spec.remediationType == Env_Remediation_Type_Dependency)
                     {
                         Package pkg = Package::Current();
                         IVectorView<Package> dependencies = pkg.Dependencies();
@@ -215,12 +259,12 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                             {
                                 ZeroMemory(lpValue, lenBuf);
                                 value_data.copy(lpValue, lenBuf);
-                                return (DWORD) value_data.size();
+                                return (DWORD)value_data.size();
                             }
                             else
                             {
                                 SetLastError(ERROR_BUFFER_OVERFLOW);
-                                return (DWORD) value_data.size() + 1 /* To include NULL terminator */;
+                                return (DWORD)value_data.size() + 1 /* To include NULL terminator */;
                             }
                         }
                         else
@@ -240,56 +284,19 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
                             {
                                 ZeroMemory(lpValue, lenBuf);
                                 value_data.copy(lpValue, lenBuf);
-                                return (DWORD) value_data.size();
+                                return (DWORD)value_data.size();
                             }
                             else
                             {
                                 SetLastError(ERROR_BUFFER_OVERFLOW);
-                                return (DWORD) value_data.size() + 1 /* To include NULL terminator */;
+                                return (DWORD)value_data.size() + 1 /* To include NULL terminator */;
                             }
                         }
                     }
-
-                    // Sometimes HKLM\System reg items from the package are not visible to the app.  We think this is a bug, so
-                    // allow a check to see if there is a value field in the JSON and use that.
-                    // Of course, we should always look at the json if useregistry was set to false anyway.
-                    Log("[%d] GetEnvironmentVariableFixup: Json supplied case.", GetEnvVarInstance);
-
-                    if (valuelen < lenBuf)
-                    {
-                        Log("[%d] GetEnvironmentVariableFixup: Match to be returned.", GetEnvVarInstance);
-                        // copy into lpValue, but might need form conversion
-                        if constexpr (psf::is_ansi<CharT>)
-                        {
-                            std::string sval = narrow(spec.variablevalue);
-                            LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value is ", sval.c_str());
-                            ZeroMemory(lpValue, lenBuf);
-                            sval.copy(lpValue, lenBuf, 0);
-                            //strcpy_s(lpValue, lenBuf, sval.c_str());
-                            LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(A) HKCU value copied is ", lpValue);
-                            result = (DWORD)sval.length();
-                        }
-                        else
-                        {
-                            LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) HKCU value is ", spec.variablevalue.data());
-                            ZeroMemory(lpValue, lenBuf);
-                            spec.variablevalue.copy(lpValue, lenBuf, 0);
-                            LogString(GetEnvVarInstance, "GetEnvironmentVariableFixup:(W) HKCU value copied is ", lpValue);
-                            result = (DWORD)valuelen;
-                        }
-                        Log("GetEnvironmentVariableFixup: Value saved.");
-                        SetLastError(ERROR_SUCCESS);
-                        return(result);
-                    }
                     else
                     {
-                        Log("GetEnvironmentVariableFixup: Match returns bufferoverflow.");
-                        // return buffer overflow
-                        result = ERROR_BUFFER_OVERFLOW;
-                        SetLastError(ERROR_BUFFER_OVERFLOW);
-                        return(result);
+                        Log("[%d] Unknown EnvVarFixup.\n", GetEnvVarInstance);
                     }
-
                 }
             }
             catch (...)
@@ -340,59 +347,62 @@ BOOL __stdcall SetEnvironmentVariableFixup(_In_ const CharT* lpName, _In_ const 
             {
                 if (std::regex_match(eName, spec.variablename))
                 {
-                    if (spec.useregistry == true)
+                    if (spec.remediationType == Env_Remediation_Type_Registry)
                     {
-                        Log("[%d] GetEnvironmentVariableFixup: registry case.", SetEnvVarInstance);
-
-                        HKEY hKeyCU;
-                        if constexpr (psf::is_ansi<CharT>)
+                        if (spec.useregistry == true)
                         {
-                            if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment", 0, MAXIMUM_ALLOWED, &hKeyCU) == ERROR_SUCCESS)
+                            Log("[%d] GetEnvironmentVariableFixup: registry case.", SetEnvVarInstance);
+
+                            HKEY hKeyCU;
+                            if constexpr (psf::is_ansi<CharT>)
                             {
-                                DWORD dLen = (DWORD)((strlen(lpValue) + 1) * sizeof(CharT));
-                                auto ret = RegSetValueExA(hKeyCU, lpName, NULL, REG_SZ, (BYTE*)lpValue, dLen);
-                                if (ret == ERROR_SUCCESS)
+                                if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment", 0, MAXIMUM_ALLOWED, &hKeyCU) == ERROR_SUCCESS)
                                 {
-                                    Log("[%d] SetEnvironmentVariableFixup: success. %s=%s", SetEnvVarInstance, lpName, lpValue);
-                                    result = 1;
-                                    return result;
+                                    DWORD dLen = (DWORD)((strlen(lpValue) + 1) * sizeof(CharT));
+                                    auto ret = RegSetValueExA(hKeyCU, lpName, NULL, REG_SZ, (BYTE*)lpValue, dLen);
+                                    if (ret == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] SetEnvironmentVariableFixup: success. %s=%s", SetEnvVarInstance, lpName, lpValue);
+                                        result = 1;
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] SetEnvironmentVariableFixup: Failure 0x%x.", SetEnvVarInstance, GetLastError());
+                                        result = 0;
+                                        return result;
+                                    }
                                 }
-                                else
+                            }
+                            else
+                            {
+                                if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, MAXIMUM_ALLOWED, &hKeyCU) == ERROR_SUCCESS)
                                 {
-                                    Log("[%d] SetEnvironmentVariableFixup: Failure 0x%x.", SetEnvVarInstance, GetLastError());
-                                    result = 0;
-                                    return result;
+                                    DWORD dLen = (DWORD)((wcslen(lpValue) + 1) * sizeof(CharT));
+                                    auto ret = RegSetValueExW(hKeyCU, lpName, NULL, REG_SZ, (BYTE*)lpValue, dLen);
+                                    if (ret == ERROR_SUCCESS)
+                                    {
+                                        Log("[%d] SetEnvironmentVariableFixup: success. %ls=%ls", SetEnvVarInstance, lpName, lpValue);
+                                        result = 1;
+                                        return result;
+                                    }
+                                    else
+                                    {
+                                        Log("[%d] SetEnvironmentVariableFixup: Failure 0x%x.", SetEnvVarInstance, GetLastError());
+                                        result = 0;
+                                        return result;
+                                    }
                                 }
                             }
                         }
                         else
                         {
-                            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, MAXIMUM_ALLOWED, &hKeyCU) == ERROR_SUCCESS)
-                            {
-                                DWORD dLen = (DWORD)((wcslen(lpValue) + 1) * sizeof(CharT));
-                                auto ret = RegSetValueExW(hKeyCU, lpName, NULL, REG_SZ, (BYTE*)lpValue, dLen);
-                                if (ret == ERROR_SUCCESS)
-                                {
-                                    Log("[%d] SetEnvironmentVariableFixup: success. %ls=%ls", SetEnvVarInstance, lpName, lpValue);
-                                    result = 1;
-                                    return result;
-                                }
-                                else
-                                {
-                                    Log("[%d] SetEnvironmentVariableFixup: Failure 0x%x.", SetEnvVarInstance, GetLastError());
-                                    result = 0;
-                                    return result;
-                                }
-                            }
+                            Log("[%d] GetEnvironmentVariableFixup: JSON case - return ACCESS_DENIED.", SetEnvVarInstance);
+                            // Unable to overwrite json, return ACCESS_DENIED
+                            SetLastError(ERROR_ACCESS_DENIED);
+                            result = 0;
+                            return result;
                         }
-                    }
-                    else
-                    {
-                        Log("[%d] GetEnvironmentVariableFixup: JSON case - return ACCESS_DENIED.", SetEnvVarInstance);
-                        // Unable to overwrite json, return ACCESS_DENIED
-                        SetLastError(ERROR_ACCESS_DENIED);
-                        result = 0;
-                        return result;
                     }
                 }
             }

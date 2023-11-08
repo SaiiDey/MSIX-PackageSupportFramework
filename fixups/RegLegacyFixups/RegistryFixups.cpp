@@ -789,12 +789,10 @@ auto RegGetValueImpl = psf::detoured_string_function(&::RegGetValueA, &::RegGetV
 template <typename CharT>
 LSTATUS __stdcall RegGetValueFixup(HKEY key, _In_opt_ const CharT* lpSubKey, _In_opt_ const CharT* lpValue, DWORD dwFlags, _Out_opt_ LPDWORD pdwType, _Out_opt_ PVOID pvData, _Inout_opt_ LPDWORD pcbData)
 {
-	LARGE_INTEGER TickStart, TickEnd;
-    QueryPerformanceCounter(&TickStart);
-    DWORD RegLocalInstance = ++g_RegIntceptInstance;
     auto entry = LogFunctionEntry();
 
 #if _DEBUG
+    DWORD RegLocalInstance = ++g_RegIntceptInstance;
     Log("[%d] RegGetValue:\n", RegLocalInstance);
 #endif
 
