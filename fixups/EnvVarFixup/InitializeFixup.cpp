@@ -168,15 +168,15 @@ void InitializeConfiguration()
 
                     if (registry && dependency)
                     {
-						Log("EnvVarFixup: Bad config. Both 'useregistry' and 'dependency' specified");
+                        Log("EnvVarFixup: Bad config. Both 'useregistry' and 'dependency' specified");
                         continue;
                     }
                     else if (!registry && !dependency)
                     {
-						Log("EnvVarFixup: Bad config. Neither 'useregistry' and 'dependency' specified");
+                        Log("EnvVarFixup: Bad config. Neither 'useregistry' and 'dependency' specified");
                         continue;
                     }
-					else if (registry)
+                    else if (registry)
                     {
                         auto useregistry = registry->as_string().wstring();
                         traceDataStream << " useregistry: " << useregistry << " ;";
@@ -200,11 +200,11 @@ void InitializeConfiguration()
                     }
                     else
                     {
-						auto dep = dependency->as_string().wstring();
+                        auto dep = dependency->as_string().wstring();
                         traceDataStream << " dependency: " << dep << " ;";
                         LogString(0, "GetEnvFixup Config: name", variablenamePattern.data());
                         LogString(0, "GetEnvFixup Config: value", variablevalue.data());
-						LogString(0, "GetEnvFixup Config: dependency", dep.data());
+                        LogString(0, "GetEnvFixup Config: dependency", dep.data());
                         g_envvar_envVarSpecs.emplace_back();
                         g_envvar_envVarSpecs.back().remediationType = Env_Remediation_Type_Dependency;
                         g_envvar_envVarSpecs.back().variablename.assign(variablenamePattern.data(), variablenamePattern.length());
