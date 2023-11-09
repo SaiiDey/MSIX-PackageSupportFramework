@@ -440,11 +440,11 @@ LSTATUS __stdcall RegOpenKeyExFixup(
     auto entry = LogFunctionEntry();
 
     Log("[%d] RegOpenKeyEx:\n", RegLocalInstance);
-    const char* updatedSubKey = ReplaceRegistryQueryPath(&key, subKey);
-    if (updatedSubKey)
-    {
-        return RegOpenKeyExImpl(key, updatedSubKey, options, samDesired, resultKey);
-    }
+    //const char* updatedSubKey = ReplaceRegistryQueryPath(&key, subKey);
+    //if (updatedSubKey)
+    //{
+    //    return RegOpenKeyExImpl(key, updatedSubKey, options, samDesired, resultKey);
+    //}
 
     std::string keypath = InterpretKeyPath(key) + "\\" + InterpretStringA(subKey);
 
