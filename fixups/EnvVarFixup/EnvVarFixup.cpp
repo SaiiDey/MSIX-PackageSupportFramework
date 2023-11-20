@@ -282,7 +282,7 @@ DWORD __stdcall GetEnvironmentVariableFixup(_In_ const CharC* lpName, _Inout_ Ch
 
                             if (lenBuf > value_data.size())
                             {
-                                ZeroMemory(lpValue, lenBuf);
+                                ZeroMemory(lpValue, lenBuf * sizeof(wchar_t));
                                 value_data.copy(lpValue, lenBuf);
                                 return (DWORD)value_data.size();
                             }

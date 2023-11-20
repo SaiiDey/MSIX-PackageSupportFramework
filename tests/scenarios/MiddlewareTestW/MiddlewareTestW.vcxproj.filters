@@ -21,9 +21,6 @@
     <Xml Include="AppxManifest.xml">
       <Filter>pkg</Filter>
     </Xml>
-    <Xml Include="config.xml">
-      <Filter>pkg</Filter>
-    </Xml>
   </ItemGroup>
   <ItemGroup>
     <None Include="config.json">
@@ -36,7 +33,7 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="MiddlewareW.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

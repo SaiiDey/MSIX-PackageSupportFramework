@@ -25,32 +25,32 @@ using namespace std::literals;
 // missing applications as too serious
 static constexpr const wchar_t* g_applications[] =
 {
-    //L"ArchitectureTest_8wekyb3d8bbwe!Fixed32",
-    //L"ArchitectureTest_8wekyb3d8bbwe!Fixed64",
-    //L"CompositionTest_8wekyb3d8bbwe!Fixed",
-    //L"FileSystemTest_8wekyb3d8bbwe!Fixed",
-    //L"LongPathsTest_8wekyb3d8bbwe!Fixed",
-    //L"PowershellScriptTest_8wekyb3d8bbwe!PSNoScripts",
-    //L"PowershellScriptTest_8wekyb3d8bbwe!PSOnlyStart",
-    //L"PowershellScriptTest_8wekyb3d8bbwe!PSBothStartingFirst",
-    //L"PowershellScriptTest_8wekyb3d8bbwe!PSScriptWithArg",
-    //L"PowershellScriptTest_8wekyb3d8bbwe!PSWaitForScriptToFinish",
-    //L"DynamicLibraryTest_8wekyb3d8bbwe!Fixed32",
-    //L"DynamicLibraryTest_8wekyb3d8bbwe!Fixed64",
+    L"ArchitectureTest_8wekyb3d8bbwe!Fixed32",
+    L"ArchitectureTest_8wekyb3d8bbwe!Fixed64",
+    L"CompositionTest_8wekyb3d8bbwe!Fixed",
+    L"FileSystemTest_8wekyb3d8bbwe!Fixed",
+    L"LongPathsTest_8wekyb3d8bbwe!Fixed",
+    L"PowershellScriptTest_8wekyb3d8bbwe!PSNoScripts",
+    L"PowershellScriptTest_8wekyb3d8bbwe!PSOnlyStart",
+    L"PowershellScriptTest_8wekyb3d8bbwe!PSBothStartingFirst",
+    L"PowershellScriptTest_8wekyb3d8bbwe!PSScriptWithArg",
+    L"PowershellScriptTest_8wekyb3d8bbwe!PSWaitForScriptToFinish",
+    L"DynamicLibraryTest_8wekyb3d8bbwe!Fixed32",
+    L"DynamicLibraryTest_8wekyb3d8bbwe!Fixed64",
     L"RegLegacyTest_8wekyb3d8bbwe!Fixed32",
     L"RegLegacyTest_8wekyb3d8bbwe!Fixed64",
-    //L"EnvVarsATest_8wekyb3d8bbwe!Fixed32",
-    //L"EnvVarsATest_8wekyb3d8bbwe!Fixed64",
-    //L"EnvVarsWTest_8wekyb3d8bbwe!Fixed32",
-    //L"EnvVarsWTest_8wekyb3d8bbwe!Fixed64",
-	//L"MiddlewaresATest_8wekyb3d8bbwe!Fixed32",
-    //L"MiddlewaresATest_8wekyb3d8bbwe!Fixed64",
-    L"MiddlewaresWTest_8wekyb3d8bbwe!Fixed32",
-    L"MiddlewaresWTest_8wekyb3d8bbwe!Fixed64",
-    //L"ArgRedirectionTest_8wekyb3d8bbwe!Fixed32",
-    //L"ArgRedirectionTest_8wekyb3d8bbwe!Fixed64",
-    //L"PreventBreakAwayTest_8wekyb3d8bbwe!Fixed32",
-    //L"PreventBreakAwayTest_8wekyb3d8bbwe!Fixed64"
+    L"EnvVarsATest_8wekyb3d8bbwe!Fixed32",
+    L"EnvVarsATest_8wekyb3d8bbwe!Fixed64",
+    L"EnvVarsWTest_8wekyb3d8bbwe!Fixed32",
+    L"EnvVarsWTest_8wekyb3d8bbwe!Fixed64",
+	L"MiddlewareTestA_8wekyb3d8bbwe!Fixed32",
+    L"MiddlewareTestA_8wekyb3d8bbwe!Fixed64",
+    L"MiddlewareTestW_8wekyb3d8bbwe!Fixed32",
+    L"MiddlewareTestW_8wekyb3d8bbwe!Fixed64",
+    L"ArgRedirectionTest_8wekyb3d8bbwe!Fixed32",
+    L"ArgRedirectionTest_8wekyb3d8bbwe!Fixed64",
+    L"PreventBreakAwayTest_8wekyb3d8bbwe!Fixed32",
+    L"PreventBreakAwayTest_8wekyb3d8bbwe!Fixed64"
 };
 
 bool g_onlyPrintSummary = false;
@@ -305,7 +305,7 @@ int wmain(int argc, const wchar_t** argv)
     {
         if (!g_onlyPrintSummary)
         {
-            std::wcout << "\nLaunching: " << info_text() << aumid << "\n";
+          std::wcout << "\nLaunching: " << info_text() << aumid << "\n";
         }
 
         g_state.test_apps.emplace_back();
