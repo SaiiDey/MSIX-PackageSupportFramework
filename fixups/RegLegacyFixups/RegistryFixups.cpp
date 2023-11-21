@@ -1128,6 +1128,22 @@ LSTATUS __stdcall  RegGetValueFixup(
 #ifdef _DEBUG
         Log("[%d] RegGetValue:\n", RegLocalInstance);
 #endif
+
+        // If subkey is in redirected path, use it to get Registry Value
+		const char* updatedSubKey = ReplaceRegistryQueryPath(&key, SubKey);
+		if (updatedSubKey)
+		{
+			if constexpr (psf::is_ansi<CharT>) 
+			{
+				return RegGetValueImpl(key, updatedSubKey, Value, dwFlags, pdwType, pvData, pcbData);
+			}
+			else
+			{
+				auto wideSubKey = widen(updatedSubKey);
+				return RegGetValueImpl(key, wideSubKey.c_str(), Value, dwFlags, pdwType, pvData, pcbData);
+			}
+		}
+
         //Get Registry Path from hkey
         std::string keypath = InterpretKeyPath(key) + "\\" + InterpretStringA(SubKey);
         keypath = ReplaceRegistrySyntax(keypath);
@@ -1533,34 +1549,4 @@ LSTATUS __stdcall RegDeleteValueFixup(
     return result;
 }
 DECLARE_STRING_FIXUP(RegDeleteValueImpl, RegDeleteValueFixup);
-
-
-auto RegGetValueImpl = psf::detoured_string_function(&::RegGetValueA, &::RegGetValueW);
-template <typename CharT>
-LSTATUS __stdcall RegGetValueFixup(HKEY key, _In_opt_ const CharT* lpSubKey, _In_opt_ const CharT* lpValue, DWORD dwFlags, _Out_opt_ LPDWORD pdwType, _Out_opt_ PVOID pvData, _Inout_opt_ LPDWORD pcbData)
-{
-    auto entry = LogFunctionEntry();
-
-#if _DEBUG
-    DWORD RegLocalInstance = ++g_RegIntceptInstance;
-    Log("[%d] RegGetValue:\n", RegLocalInstance);
-#endif
-
-    const char* updatedSubKey = ReplaceRegistryQueryPath(&key, lpSubKey);
-    if (updatedSubKey)
-    {
-        if constexpr (psf::is_ansi<CharT>) 
-        {
-            return RegGetValueImpl(key, updatedSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
-        }
-        else
-        {
-            auto wideSubKey = widen(updatedSubKey);
-            return RegGetValueImpl(key, wideSubKey.c_str(), lpValue, dwFlags, pdwType, pvData, pcbData);
-        }
-    }
-
-	return RegGetValueImpl(key, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
-}
-DECLARE_STRING_FIXUP(RegGetValueImpl, RegGetValueFixup);
 
