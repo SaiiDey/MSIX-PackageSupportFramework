@@ -43,7 +43,7 @@ static constexpr const wchar_t* g_applications[] =
     L"EnvVarsATest_8wekyb3d8bbwe!Fixed64",
     L"EnvVarsWTest_8wekyb3d8bbwe!Fixed32",
     L"EnvVarsWTest_8wekyb3d8bbwe!Fixed64",
-	L"MiddlewareTestA_8wekyb3d8bbwe!Fixed32",
+    L"MiddlewareTestA_8wekyb3d8bbwe!Fixed32",
     L"MiddlewareTestA_8wekyb3d8bbwe!Fixed64",
     L"MiddlewareTestW_8wekyb3d8bbwe!Fixed32",
     L"MiddlewareTestW_8wekyb3d8bbwe!Fixed64",
@@ -305,7 +305,7 @@ int wmain(int argc, const wchar_t** argv)
     {
         if (!g_onlyPrintSummary)
         {
-          std::wcout << "\nLaunching: " << info_text() << aumid << "\n";
+            std::wcout << "\nLaunching: " << info_text() << aumid << "\n";
         }
 
         g_state.test_apps.emplace_back();
